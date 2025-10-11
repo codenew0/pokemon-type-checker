@@ -419,9 +419,9 @@ class PokemonApp:
         self.result_text.insert(tk.END, "⚔️ おすすめ技タイプ\n", "recommend")
         if result["recommended_move_types"]:
             self.result_text.insert(tk.END, f"　{', '.join(result['recommended_move_types'])}\n", "highlight")
-            self.result_text.insert(tk.END, "　→ 敵に効果的なダメージを与えられます\n")
+            self.result_text.insert(tk.END, "　→ 敵に効果的なダメージを与えられます\n\n")
         else:
-            self.result_text.insert(tk.END, "　該当なし\n")
+            self.result_text.insert(tk.END, "　該当なし\n\n")
         
         # 敵情報
         self.result_text.insert(tk.END, "━━━━━━━━━━━━━━━━━━━━\n", "title")
