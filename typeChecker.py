@@ -75,19 +75,30 @@ class PokemonTypeRecommender:
         
         for defend_type in self.types:
             max_damage = 0.0
+            min_damage = float('inf')
             has_immunity = False
+            has_weakness = False
+            has_resistance = False
             
             for move_type in enemy_move_types:
                 damage = self.get_attack_effectiveness(move_type, [defend_type])
                 if damage == 0:
                     has_immunity = True
+                elif damage >= 2.0:
+                    has_weakness = True
+                elif damage <= 0.5:
+                    has_resistance = True
+                    
                 max_damage = max(max_damage, damage)
+                if damage > 0:
+                    min_damage = min(min_damage, damage)
             
-            if has_immunity:
-                defense_analysis["無効"].add(defend_type)
-            elif max_damage >= 2.0:
+            # 弱点がある場合は「ばつぐん」に分類（危険）
+            if has_weakness:
                 defense_analysis["ばつぐん"].add(defend_type)
-            elif max_damage <= 0.5:
+            elif has_immunity:
+                defense_analysis["無効"].add(defend_type)
+            elif has_resistance or max_damage <= 0.5:
                 defense_analysis["いまいち"].add(defend_type)
             else:
                 defense_analysis["有効"].add(defend_type)
@@ -106,11 +117,23 @@ class PokemonTypeRecommender:
         recommended_pokemon_types = good_defense_types - bad_defense_types
         recommended_move_types = good_attack_types
         
+        # タイプ一致を考慮した総合推奨（防御有利 ∩ 攻撃等倍以上）
+        # 攻撃が等倍以上のタイプ（いまいち・無効でないタイプ）
+        not_bad_attack_types = set()
+        for attack_type in self.types:
+            multiplier = self.get_attack_effectiveness(attack_type, enemy_types)
+            if multiplier >= 1.0:  # 等倍以上
+                not_bad_attack_types.add(attack_type)
+        
+        # 防御有利で、攻撃も等倍以上取れるタイプ
+        balanced_types = good_defense_types & not_bad_attack_types
+        
         return {
             "attack_effectiveness": attack_effectiveness,
             "defense_analysis": defense_analysis,
             "recommended_pokemon_types": list(recommended_pokemon_types),
-            "recommended_move_types": list(recommended_move_types)
+            "recommended_move_types": list(recommended_move_types),
+            "balanced_types": list(balanced_types)  # 追加
         }
 
 
@@ -272,7 +295,9 @@ class PokemonApp:
         self.result_text.tag_config("damage05x", font=('Arial', 11), foreground='#3498db')
         self.result_text.tag_config("damage0x", font=('Arial', 11), foreground='#95a5a6')
         self.result_text.tag_config("recommend", font=('Arial', 12, 'bold'), foreground='#27ae60', spacing3=5)
+        self.result_text.tag_config("best", font=('Arial', 13, 'bold'), foreground='#d35400', spacing3=5)
         self.result_text.tag_config("highlight", background='#fff9c4')
+        self.result_text.tag_config("best_highlight", background='#ffeb3b', font=('Arial', 12, 'bold'))
         
         # 初期メッセージ
         self.show_initial_message()
@@ -403,12 +428,20 @@ class PokemonApp:
     def display_results(self, enemy_types, enemy_move_types, result):
         """結果を表示"""
         self.result_text.delete(1.0, tk.END)
-
+                
         # 推奨
         self.result_text.insert(tk.END, "━━━━━━━━━━━━━━━━━━━━\n", "title")
         self.result_text.insert(tk.END, "　✨ おすすめの戦略\n", "title")
         self.result_text.insert(tk.END, "━━━━━━━━━━━━━━━━━━━━\n\n", "title")
-        self.result_text.insert(tk.END, "🎯 おすすめポケモンタイプ\n", "recommend")
+        
+        # タイプ一致を考慮した総合推奨
+        if result["balanced_types"]:
+            self.result_text.insert(tk.END, "🌟 タイプ一致技を使う場合の総合おすすめ\n", "best")
+            self.result_text.insert(tk.END, f"　{', '.join(result['balanced_types'])}\n", "best_highlight")
+            self.result_text.insert(tk.END, "　→ 敵の技を半減でき、等倍以上のダメージも出せます\n")
+            self.result_text.insert(tk.END, "　　 タイプ一致補正（1.5倍）で安定した戦いができます！\n\n")
+        
+        self.result_text.insert(tk.END, "🎯 おすすめポケモンタイプ（防御面）\n", "recommend")
         if result["recommended_pokemon_types"]:
             self.result_text.insert(tk.END, f"　{', '.join(result['recommended_pokemon_types'])}\n", "highlight")
             self.result_text.insert(tk.END, "　→ 敵の技を受けにくく安全です\n\n")
@@ -416,7 +449,7 @@ class PokemonApp:
             self.result_text.insert(tk.END, "　該当なし\n")
             self.result_text.insert(tk.END, "　→ 防御面で完全に有利なタイプはありません\n\n")
         
-        self.result_text.insert(tk.END, "⚔️ おすすめ技タイプ\n", "recommend")
+        self.result_text.insert(tk.END, "⚔️ おすすめ技タイプ（攻撃面）\n", "recommend")
         if result["recommended_move_types"]:
             self.result_text.insert(tk.END, f"　{', '.join(result['recommended_move_types'])}\n", "highlight")
             self.result_text.insert(tk.END, "　→ 敵に効果的なダメージを与えられます\n\n")
@@ -483,6 +516,7 @@ class PokemonApp:
         if defense_ana["ばつぐん"]:
             self.result_text.insert(tk.END, "⚠️ ばつぐん（2倍以上）\n", "damage2x")
             self.result_text.insert(tk.END, f"　{', '.join(defense_ana['ばつぐん'])}\n\n", "damage2x")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
