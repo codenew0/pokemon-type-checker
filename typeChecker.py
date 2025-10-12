@@ -162,23 +162,40 @@ class TypeButton(tk.Button):
         """色を暗くする"""
         hex_color = hex_color.lstrip('#')
         r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        r = max(0, int(r * 0.7))
-        g = max(0, int(g * 0.7))
-        b = max(0, int(b * 0.7))
+        r = max(0, int(r * 0.5))
+        g = max(0, int(g * 0.5))
+        b = max(0, int(b * 0.5))
         return f'#{r:02x}{g:02x}{b:02x}'
     
     def toggle(self):
         """選択状態を切り替え"""
         self.selected = not self.selected
         if self.selected:
-            self.config(relief=tk.SUNKEN, bg=self.selected_bg, bd=4)
+            self.config(
+                relief=tk.SUNKEN, 
+                bg=self.selected_bg,
+                text=f"✓ {self.type_name}",
+                font=('Arial', 10, 'bold'),
+                bd=2
+            )
         else:
-            self.config(relief=tk.RAISED, bg=self.default_bg, bd=2)
+            self.config(
+                relief=tk.RAISED, 
+                bg=self.default_bg,
+                text=self.type_name,
+                font=('Arial', 10, 'bold'),
+                bd=2
+            )
     
     def reset(self):
         """選択状態をリセット"""
         self.selected = False
-        self.config(relief=tk.RAISED, bg=self.default_bg, bd=2)
+        self.config(
+            relief=tk.RAISED, 
+            bg=self.default_bg,
+            text=self.type_name,
+            bd=2
+        )
 
 
 class PokemonApp:
